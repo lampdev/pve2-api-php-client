@@ -1,0 +1,9 @@
+{
+    "name": "monbro/pve2api",
+    "description": "This is a simple PHP client for Proxmox API with a composer wrapper",
+    "autoload": {
+        "psr-0": {
+            "PVE": "lib/"
+        }
+    }
+}
