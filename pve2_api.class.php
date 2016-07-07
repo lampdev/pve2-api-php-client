@@ -53,6 +53,17 @@ class PVE2_API {
 		$this->pve_login_ticket_timestamp = null;
 		$this->pve_cluster_node_list = null;
 		$this->constructor_success = true;
+
+		// default values if not set already
+		if(!isset($this->curl_timeout_seconds)) {
+			$this->curl_timeout_seconds = 30;
+		}
+
+		if(!isset($this->curl_conn_timeout_seconds)) {
+			$this->curl_conn_timeout_seconds = 10;
+		}
+
+		$this->curlInfo = false;
 	}
 
 	public function constructor_success () {
@@ -82,6 +93,22 @@ class PVE2_API {
 		}
 	}
 
+	public function setConnectionTimeoutSeconds($timeout) {
+		$this->curl_conn_timeout_seconds = $timeout;
+	}
+
+	public function setTimeoutSeconds($timeout) {
+		$this->curl_timeout_seconds = $timeout;
+	}
+
+	public function getTimeoutSeconds() {
+		return $this->curl_timeout_seconds;
+	}
+
+	public function getCurlInfo() {
+		return $this->curlInfo;
+	}
+
 	/*
 	 * bool login ()
 	 * Performs login to PVE Server using JSON API, and obtains Access Ticket.
@@ -102,13 +129,22 @@ class PVE2_API {
 
 		# Perform login request.
 		$prox_ch = curl_init();
+
+		// set request timeout limit
+		curl_setopt($prox_ch, CURLOPT_CONNECTTIMEOUT , $this->curl_conn_timeout_seconds);
+		curl_setopt($prox_ch, CURLOPT_TIMEOUT, $this->curl_timeout_seconds);
+
 		curl_setopt($prox_ch, CURLOPT_URL, "https://".$this->pve_hostname.":8006/api2/json/access/ticket");
 		curl_setopt($prox_ch, CURLOPT_POST, true);
 		curl_setopt($prox_ch, CURLOPT_RETURNTRANSFER, true);
 		curl_setopt($prox_ch, CURLOPT_POSTFIELDS, $login_postfields_string);
 		curl_setopt($prox_ch, CURLOPT_SSL_VERIFYPEER, false);
 
+		// execute request
 		$login_ticket = curl_exec($prox_ch);
+
+		// get request information
+		$this->curlInfo = curl_getinfo($prox_ch);
 
 		curl_close($prox_ch);
 		unset($prox_ch);
@@ -219,10 +255,14 @@ class PVE2_API {
 				break;
 			default:
 				if ($this->print_debug === true) {
-					print("Error - Invalid HTTP Method specified.\n");	
+					print("Error - Invalid HTTP Method specified.\n");
 				}
 				return false;
 		}
+
+		// set request timeout limit
+		curl_setopt($prox_ch, CURLOPT_CONNECTTIMEOUT , $this->curl_conn_timeout_seconds);
+		curl_setopt($prox_ch, CURLOPT_TIMEOUT, $this->curl_timeout_seconds);
 
 		curl_setopt($prox_ch, CURLOPT_HEADER, true);
 		curl_setopt($prox_ch, CURLOPT_RETURNTRANSFER, true);
@@ -230,6 +270,9 @@ class PVE2_API {
 		curl_setopt($prox_ch, CURLOPT_SSL_VERIFYPEER, false);
 
 		$action_response = curl_exec($prox_ch);
+
+		// get request information
+		$this->curlInfo = curl_getinfo($prox_ch);
 
 		curl_close($prox_ch);
 		unset($prox_ch);
@@ -345,7 +388,7 @@ class PVE2_API {
 		return $this->pve_cluster_node_list;
 	}
 
-	
+
 	/*
 	 * bool|int get_next_vmid ()
 	 * Get Last VMID from a Cluster or a Node
